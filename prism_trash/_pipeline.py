@@ -91,7 +91,7 @@ def _retrieve_parameters(self):
     self._n_sam_init = file.attrs['n_sam_init']
     self._do_active_anal = file.attrs['do_active_anal']
     self._pot_active_par = file.attrs['pot_active_par']
-    self._criterion = file.attrs['criterion'].decode('utf-8')
+    self._criterion = file.attrs['criterion']
 
     # Close hdf5-file
     self._close_hdf5(file)

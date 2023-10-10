@@ -7,7 +7,7 @@ Provides the definition of the base class holding the emulator of the *PRISM*
 package, the :class:`~Emulator` class.
 
 """
-
+import sys
 
 # %% IMPORTS
 # Built-in imports
@@ -920,13 +920,12 @@ class Emulator(object):
         if(idx_len == 1):
             # TODO: Remove this in v1.4.0
             if self._check_future_compat('1.3.2.dev0', '1.4.0'):
-                data_idx = literal_eval(
-                    emul_s_group.attrs['data_idx'].decode('utf-8'))
-
+                data_idx = literal_eval(emul_s_group.attrs['data_idx'])
+             
             # If part is an encoded string, decode and save it
             elif isinstance(emul_s_group.attrs['data_idx'],
                             bytes):  # pragma: no cover
-                data_idx = emul_s_group.attrs['data_idx'].decode('utf-8')
+                data_idx = emul_s_group.attrs['data_idx']
             # Else, save it normally
             else:  # pragma: no cover
                 data_idx = emul_s_group.attrs['data_idx']
@@ -944,12 +943,13 @@ class Emulator(object):
                 # TODO: Remove this in v1.4.0
                 if self._check_future_compat('1.3.2.dev0', '1.4.0'):
                     data_idx.append(literal_eval(
-                        emul_s_group.attrs[key].decode('utf-8')))
+                        emul_s_group.attrs[key]))
 
+                    
                 # If part is an encoded string, decode and save it
                 elif isinstance(emul_s_group.attrs[key],
                                 bytes):  # pragma: no cover
-                    idx_str = emul_s_group.attrs[key].decode('utf-8')
+                    idx_str = emul_s_group.attrs[key]
                     data_idx.append(idx_str)
                 # Else, save it normally
                 else:  # pragma: no cover
@@ -1818,9 +1818,12 @@ class Emulator(object):
 
             # Wrap in try-statement to add additional info if error is raised
             try:
-                # Perform regression for this emulator system
+                # Perform regression for this emulator system               
                 pipe.fit(active_sam_set, mod_set)
             except Exception as error:      # pragma: no cover
+                print("Error encountered while fitting")
+                print("active_sam_set = ", active_sam_set)
+                print("mod_set = ", mod_set)
                 # If an error is raised, add which emulator system that was
                 e13.raise_error(
                     str(error)+" [emul_%i]" % (self._emul_s[emul_s]),
@@ -1853,8 +1856,13 @@ class Emulator(object):
 
             # Check every polynomial coefficient if it is significant enough
             max_sam_set_poly = np.insert(np.max(sam_set_poly, axis=0), 0, 1)
-            poly_sign = ~np.isclose(max_sam_set_poly*poly_coef/np.min(mod_set),
+            try:
+                poly_sign = ~np.isclose(max_sam_set_poly*poly_coef/np.min(mod_set),
                                     0)
+            except ZeroDivisionError:
+                print(f"max_sam_set_poly = {max_sam_set_poly} mod_set = {mod_set} min(mod_set) = {np.min(mod_set)}", file=sys.stderr)
+                print(f"po;y_coef = {poly_coef}")
+                raise
 
             # Only include significant polynomial terms unless none of the
             # non-intercept terms are significant
@@ -2598,8 +2606,8 @@ class Emulator(object):
                 # Check if active_par is available for the controller
                 if self._is_controller:
                     try:
-                        par_i = [self._modellink._par_name.index(par.decode(
-                            'utf-8')) for par in group.attrs['active_par']]
+                        par_i = [self._modellink._par_name.index() for par in group.attrs['active_par']]
+
                         self._active_par.append(np_array(par_i))
                     except KeyError:
                         self._active_par.append([])
@@ -2667,9 +2675,9 @@ class Emulator(object):
 
                     # Check if active_par_data is available
                     try:
-                        par_i = [self._modellink._par_name.index(
-                            par.decode('utf-8')) for par in
-                            data_set.attrs['active_par_data']]
+                        par_i = [self._modellink._par_name.index()
+                                 for par in data_set.attrs['active_par_data']]
+
                         active_par_data.append(np_array(par_i))
                     except KeyError:
                         active_par_data.append([])
@@ -2721,7 +2729,7 @@ class Emulator(object):
                     # Read in data values, errors and spaces
                     data_val.append(data_set.attrs['data_val'])
                     data_err.append(data_set.attrs['data_err'].tolist())
-                    data_spc.append(data_set.attrs['data_spc'].decode('utf-8'))
+                    data_spc.append(data_set.attrs['data_spc'])
 
                     # Read in all data_idx parts and combine them
                     data_idx.append(self._read_data_idx(data_set))
@@ -2993,7 +3001,7 @@ class Emulator(object):
         # Open hdf5-file
         with self._File('r', None) as file:
             # Check if provided emulator is the same as requested
-            emul_type = file.attrs['emul_type'].decode('utf-8')
+            emul_type = file.attrs['emul_type']
             if(emul_type != self._emul_type):
                 err_msg = ("Provided emulator system type (%r) does not match "
                            "the requested type (%r)!"
@@ -3001,7 +3009,7 @@ class Emulator(object):
                 e13.raise_error(err_msg, RequestError, logger)
 
             # Obtain used PRISM version and check its compatibility
-            prism_version = file.attrs['prism_version'].decode('utf-8')
+            prism_version = file.attrs['prism_version']
             check_compatibility(prism_version)
 
             # Read in all the emulator parameters
@@ -3009,11 +3017,11 @@ class Emulator(object):
             self._sigma = file.attrs['sigma']
             self._l_corr = file.attrs['l_corr']
             self._f_infl = file.attrs['f_infl']
-            self._method = file.attrs['method'].decode('utf-8')
+            self._method = file.attrs['method']
             self._use_regr_cov = int(file.attrs['use_regr_cov'])
             self._poly_order = file.attrs['poly_order']
             self._n_cross_val = file.attrs['n_cross_val']
-            modellink_name = file.attrs['modellink_name'].decode('utf-8')
+            modellink_name = file.attrs['modellink_name']
             self._use_mock = int(file.attrs['use_mock'])
 
         # Log that reading is finished
@@ -3216,7 +3224,7 @@ class Emulator(object):
                     data_set = group['emul_%i' % (emul_s)]
                     data_val.append(data_set.attrs['data_val'])
                     data_err.append(data_set.attrs['data_err'].tolist())
-                    data_spc.append(data_set.attrs['data_spc'].decode('utf-8'))
+                    data_spc.append(data_set.attrs['data_spc'])
 
                     # Read in all data_idx parts and combine them
                     data_idx.append(self._read_data_idx(data_set))
